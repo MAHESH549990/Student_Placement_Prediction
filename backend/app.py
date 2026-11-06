@@ -189,10 +189,10 @@ def save_student(record):
         app.logger.warning("MongoDB unavailable; saving locally: %s", exc)
     existing = json.loads(STUDENTS_PATH.read_text()) if STUDENTS_PATH.exists() else []
     existing.insert(0, record)
-    STUDENTS_PATH.write_text(json.dumps(existing[:500], indent=2))
+    STUDENTS_PATH.write_text(json.dumps(existing[:10000], indent=2))
 
 
-def list_students(limit=100):
+def list_students(limit=10000):
     try:
         collection = mongo_collection()
         if collection is not None: return [clean_record(x) for x in collection.find().sort("created_at", -1).limit(limit)]
@@ -255,7 +255,7 @@ def auth_me():
 @app.get("/api/overview")
 @auth_required("admin")
 def overview():
-    m, records = get_model(), list_students()
+    m, records = get_model(), list_students(10000)
     actual = len(records)
     placed = sum(1 for r in records if r.get("prediction") == "Placed")
     month_buckets = {}
@@ -267,7 +267,7 @@ def overview():
             bucket["total"] += 1
             bucket["placed"] += rec.get("prediction") == "Placed"
         except (KeyError, ValueError, TypeError): pass
-    return jsonify({"total_students": actual, "placed_count": placed, "not_placed_count": actual - placed, "placed_rate": round(placed / actual, 3) if actual else 0, "model_accuracy": m["metrics"]["accuracy"], "students_scored": actual, "recent": records[:5], "monthly": list(month_buckets.values())[-12:], "source": m["source"], "training_rows": m["rows"]})
+    return jsonify({"total_students": actual, "placed_count": placed, "not_placed_count": actual - placed, "placed_rate": round(placed / actual, 3) if actual else 0, "model_accuracy": m["metrics"]["accuracy"], "students_scored": actual, "recent": records[:5], "monthly": [month_buckets[k] for k in sorted(month_buckets)][-12:], "source": m["source"], "training_rows": m["rows"]})
 
 
 @app.get("/api/model/metrics")
@@ -280,7 +280,7 @@ def metrics():
 @app.get("/api/students")
 @auth_required()
 def students():
-    try: limit = min(max(int(request.args.get("limit", 100)), 1), 500)
+    try: limit = min(max(int(request.args.get("limit", 500)), 1), 5000)
     except ValueError: return jsonify({"error": "limit must be an integer"}), 400
     records = list_students(limit)
     if g.user["role"] != "admin": records = [r for r in records if r.get("user_id") == g.user["id"] or r.get("email") == g.user["email"]]
