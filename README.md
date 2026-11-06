@@ -2,6 +2,8 @@
 
 A student placement system with separate student and administrator workspaces, backed by Flask and scikit-learn. Students can create accounts, enter SGPA, marks, skills, projects, internships and aptitude details, and view their private saved estimates. Administrators see live totals calculated from saved predictions and can upload datasets to train the model. MongoDB is configured in `backend/.env`; local JSON is used as a storage fallback. Without a supplied dataset, model metrics and predictions use a reproducible **synthetic demo dataset** and are illustrative, not validated for real placement decisions.
 
+The Flask API uses an MVC-style structure: `app/routes.py` registers routes, `app/controllers/` handles HTTP, `app/services/` owns application rules and ML, `app/repositories/` handles MongoDB/local persistence, `app/models/` defines domain entities, and `app/security.py` handles JWT authorization. Development runs on Flask’s local server; `APP_ENV=production` uses Waitress and requires strong secrets plus a shared Redis rate-limit store.
+
 ## Run locally
 
 Requirements: Python 3.10+, Node.js 18+.
@@ -13,6 +15,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
+# Replace the JWT_SECRET and ADMIN_BOOTSTRAP_KEY placeholders in backend/.env
 python app.py
 
 # Terminal 2 — web app
