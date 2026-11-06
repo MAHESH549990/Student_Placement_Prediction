@@ -1,8 +1,19 @@
-# Student Placement Prediction
+# Student Placement Prediction System
 
-A student placement system with separate student and administrator workspaces, backed by Flask and scikit-learn. Students can create accounts, enter SGPA, marks, skills, projects, internships and aptitude details, and view their private saved estimates. Administrators see live totals calculated from saved predictions and can upload datasets to train the model. MongoDB is configured in `backend/.env`; local JSON is used as a storage fallback. Without a supplied dataset, model metrics and predictions use a reproducible **synthetic demo dataset** and are illustrative, not validated for real placement decisions.
+A full-stack application for students to estimate placement readiness and for administrators to manage student predictions and train the model.
 
-The Flask API uses an MVC-style structure: `app/routes.py` registers routes, `app/controllers/` handles HTTP, `app/services/` owns application rules and ML, `app/repositories/` handles MongoDB/local persistence, `app/models/` defines domain entities, and `app/security.py` handles JWT authorization. Development runs on Flask’s local server; `APP_ENV=production` uses Waitress and requires strong secrets plus a shared Redis rate-limit store.
+## Overview
+
+- **Student workspace:** Create an account, submit SGPA, 12th marks, aptitude, communication, technical skills, projects, internships, and backlogs. View an estimate and personalized recommendations in **Career plan**.
+- **Admin workspace:** Review saved predictions and live outcome summaries, inspect model metrics, and upload a labeled CSV to retrain the model.
+- **Machine learning:** Flask and scikit-learn compare Logistic Regression and Decision Tree models, evaluate them with accuracy, precision, recall, and F1, and calibrate prediction probabilities.
+- **Storage and access:** MongoDB stores users and predictions when configured; local JSON is available for development. Passwords are hashed, and expiring JWTs and role-based authorization protect API routes.
+
+The included `sample_synthetic_student_placement.csv` contains generated examples to try the upload flow. It is not real student history; predictions from it are illustrative and should not be used for placement decisions.
+
+## Backend structure
+
+The Flask API uses MVC-style layers: `app/routes.py` registers routes, `app/controllers/` handles HTTP, `app/services/` contains business and ML logic, `app/repositories/` handles persistence, `app/models/` defines domain entities, and `app/security.py` handles JWT authorization. Development uses Flask’s local server. Production mode uses Waitress and requires strong secrets plus a shared Redis rate-limit store.
 
 ## Run locally
 
