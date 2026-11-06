@@ -1,4 +1,7 @@
-const API = '/api';
+// In production, set VITE_API_BASE_URL to the deployed API URL, for example:
+// https://your-backend.onrender.com/api
+// During local development, Vite's proxy handles the relative /api path.
+const API = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 export function token(){return localStorage.getItem('placement_token')||''}
 export function saveSession(data){localStorage.setItem('placement_token',data.token);localStorage.setItem('placement_user',JSON.stringify(data.user))}
 export function clearSession(){localStorage.removeItem('placement_token');localStorage.removeItem('placement_user')}
