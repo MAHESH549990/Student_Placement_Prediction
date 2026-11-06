@@ -2,6 +2,21 @@
 
 A full-stack application for students to estimate placement readiness and for administrators to manage student predictions and train the model.
 
+## Problem statement
+
+Students often have limited, scattered feedback about how academics, skills, projects, internships, aptitude, and communication relate to placement readiness. Placement teams also need a consistent way to review student profiles and outcomes.
+
+## Proposed solution
+
+GradPath collects a student profile, estimates placement likelihood from a trained classification model, and presents practical next steps for improvement. Administrators can review saved estimates, model metrics, and retrain from labeled CSV data. Predictions are decision-support estimates, not guarantees of employment.
+
+## Project objectives
+
+- Give students a private place to check their placement readiness and see tailored improvement suggestions.
+- Let administrators review saved student estimates and placement trends.
+- Compare and evaluate machine-learning models using a consistent data-preparation workflow.
+- Keep student and administrator access separate with authentication and role authorization.
+
 ## Overview
 
 - **Student workspace:** Create an account, submit SGPA, 12th marks, aptitude, communication, technical skills, projects, internships, and backlogs. View an estimate and personalized recommendations in **Career plan**.
@@ -10,6 +25,21 @@ A full-stack application for students to estimate placement readiness and for ad
 - **Storage and access:** MongoDB stores users and predictions when configured; local JSON is available for development. Passwords are hashed, and expiring JWTs and role-based authorization protect API routes.
 
 The included `sample_synthetic_student_placement.csv` contains generated examples to try the upload flow. It is not real student history; predictions from it are illustrative and should not be used for placement decisions.
+
+## Technology stack
+
+| Layer | Technologies |
+| --- | --- |
+| Frontend | React, JavaScript, Vite, Lucide React, Recharts |
+| Backend API | Python, Flask, Flask-CORS |
+| Data and ML | Pandas, scikit-learn, joblib |
+| Persistence | MongoDB with PyMongo; local JSON fallback for development |
+| Security | PyJWT bearer tokens, Werkzeug password hashing, Flask-Limiter |
+| Production server | Waitress; Redis-backed rate limiting is required in production |
+
+## Model workflow
+
+The API validates and cleans CSV data, imputes missing numeric and categorical features, scales numeric values, and one-hot encodes categories. It compares Logistic Regression and Decision Tree classifiers on a stratified holdout split, selects by F1 score, and calibrates the chosen model’s probabilities. Reported metrics include accuracy, precision, recall, and F1. Data quality and representative real outcomes matter more than model choice alone.
 
 ## Backend structure
 
@@ -47,3 +77,14 @@ Required target column: `placed` (accepted values: `1/0`, `true/false`, `yes/no`
 - Admin-only: `GET /api/overview`, `/api/model/metrics`; `POST /api/data/upload`
 - Authenticated: `GET /api/students`, `POST /api/predict`, `POST /api/students`
 - Authenticated routes require `Authorization: Bearer <token>`.
+
+## Future scope
+
+- Validate predictions on larger, recent, real placement cohorts and monitor calibration and fairness across groups.
+- Add explanations showing which profile factors contributed most to an estimate.
+- Track student progress over time and refresh career recommendations as skills improve.
+- Add dataset versioning, model comparison history, and placement-office reporting exports.
+
+## Author
+
+**Mahesh Bhatt**
