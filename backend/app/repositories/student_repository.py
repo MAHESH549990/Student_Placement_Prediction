@@ -10,7 +10,8 @@ from .json_store import read_list, write_list
 def _public(doc):
     row = dict(doc)
     if "_id" in row:
-        row["id"] = str(row.pop("_id"))
+        mongo_id = str(row.pop("_id"))
+        row.setdefault("id", mongo_id)
     return row
 
 
@@ -34,7 +35,9 @@ class StudentRepository:
         db = self._db()
         if db is not None:
             try:
-                db.students.insert_one(student)
+                # PyMongo mutates the input dict by attaching an ObjectId. Keep
+                # the response/domain record JSON-safe and retain its UUID id.
+                db.students.insert_one(dict(student))
             except PyMongoError as exc:
                 raise StorageUnavailable() from exc
             return
