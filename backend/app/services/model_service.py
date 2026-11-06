@@ -7,6 +7,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from flask import current_app
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -67,8 +68,8 @@ class ModelService:
         target = _target(frame["placed"])
         valid = target.notna()
         frame, target = frame.loc[valid].copy(), target.loc[valid].astype(int)
-        if len(frame) < 20 or target.nunique() != 2 or target.value_counts().min() < 2:
-            raise ValidationError("Training requires at least 20 labeled rows and at least two examples of each outcome.")
+        if len(frame) < 20 or target.nunique() != 2 or target.value_counts().min() < 3:
+            raise ValidationError("Training requires at least 20 labeled rows and at least three examples of each outcome for probability calibration.")
         for column in FEATURES:
             if column not in frame:
                 frame[column] = np.nan
@@ -88,9 +89,12 @@ class ModelService:
             f1 = f1_score(y_test, prediction, zero_division=0)
             metrics = {"accuracy": round(accuracy_score(y_test, prediction), 3), "precision": round(precision_score(y_test, prediction, zero_division=0), 3), "recall": round(recall_score(y_test, prediction, zero_division=0), 3), "f1": round(f1, 3)}
             scored.append((f1, name, pipeline, metrics))
-        _, name, best, metrics = max(scored, key=lambda item: item[0])
-        best.fit(inputs, target)
-        artifact = {"pipeline": best, "name": name, "metrics": metrics, "trained_at": datetime.now(timezone.utc).isoformat(), "rows": int(len(frame)), "source": source, "placed_rate": round(float(target.mean()), 3)}
+        _, name, _, metrics = max(scored, key=lambda item: item[0])
+        # Calibrate the selected model's probability estimates with out-of-fold
+        # predictions. Tree leaves otherwise often return exactly 0% or 100%.
+        calibrated = CalibratedClassifierCV(estimator=_pipeline(candidates[name]), method="sigmoid", cv=3, ensemble=True)
+        calibrated.fit(inputs, target)
+        artifact = {"pipeline": calibrated, "name": name, "metrics": metrics, "trained_at": datetime.now(timezone.utc).isoformat(), "rows": int(len(frame)), "source": source, "placed_rate": round(float(target.mean()), 3), "artifact_version": 2, "probability_calibrated": True}
         path = self._path()
         path.parent.mkdir(parents=True, exist_ok=True)
         temp = path.with_suffix(path.suffix + ".tmp")
@@ -103,7 +107,9 @@ class ModelService:
         path = self._path()
         with _model_lock:
             if path.exists():
-                return joblib.load(path)
+                artifact = joblib.load(path)
+                if artifact.get("artifact_version", 0) >= 2 or artifact.get("source") != "Synthetic demo dataset":
+                    return artifact
         return self.train(synthetic_demo_data(), "Synthetic demo dataset")
 
     def predict(self, values):
@@ -112,4 +118,9 @@ class ModelService:
         classes = list(artifact["pipeline"].classes_)
         probabilities = artifact["pipeline"].predict_proba(row)[0]
         placed_probability = float(probabilities[classes.index(1)])
+        if not artifact.get("probability_calibrated", False):
+            # Legacy uploaded models cannot be recalibrated without the source
+            # CSV. Smooth hard 0/1 outputs until the admin retrains from data.
+            placed_probability = 0.01 + 0.98 * placed_probability
+        placed_probability = min(.99, max(.01, placed_probability))
         return Prediction("Placed" if placed_probability >= .5 else "Not Placed", round(placed_probability, 4), round(max(placed_probability, 1 - placed_probability), 4), artifact["name"], artifact["source"] == "Synthetic demo dataset")

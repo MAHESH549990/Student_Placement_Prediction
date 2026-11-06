@@ -5,4 +5,5 @@ import './style.css';
 import './app.css';
 import './profile.css';
 import './auth.css';
+import './career.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
