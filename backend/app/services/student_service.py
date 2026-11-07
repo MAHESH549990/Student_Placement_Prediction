@@ -88,7 +88,8 @@ class StudentService:
         record = {
             "id": str(uuid.uuid4()), "user_id": user["id"], "email": user["email"], "name": user["name"],
             **{key: None if (isinstance(value, float) and math.isnan(value)) else value for key, value in features.values.items()},
-            "prediction": prediction.label, "probability": prediction.probability, "model": prediction.model_name,
+            "prediction": prediction.label, "probability": prediction.probability,
+            "confidence": prediction.confidence, "model": prediction.model_name,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         record["recommendations"] = self.recommendations(features.values, prediction.probability)
